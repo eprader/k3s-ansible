@@ -1,15 +1,15 @@
 ---
-- name: Setup K3s on Control Plane Node
-  hosts: master
+- name: Setup K3s on Server Node
+  hosts: server
   become: yes
   tasks:
-    - name: Install K3s on Control Plane Node
+    - name: Install K3s on Server Node
       shell: |
         curl -sfL https://get.k3s.io | K3S_VERSION={{ k3s_version }} sh -
       args:
         creates: /usr/local/bin/k3s
 
-    - name: Get the K3s token (to share with worker nodes)
+    - name: Get the K3s token to share with agent nodes
       command: cat /var/lib/rancher/k3s/server/node-token
       register: k3s_token
 
@@ -19,22 +19,22 @@
         dest: ./kubeconfig
         flat: yes
 
-    - name: Restart K3s service on Control Plane Node
+    - name: Restart K3s service on Server Node
       systemd:
         name: k3s
         state: restarted
 
-- name: Setup K3s on Worker Nodes
-  hosts: worker
+- name: Setup K3s on Agent Nodes
+  hosts: agent
   become: yes
   tasks:
-    - name: Install K3s on Worker Node
+    - name: Install K3s on Agent Node
       shell: |
-        curl -sfL https://get.k3s.io | K3S_VERSION={{ k3s_version }} K3S_URL=https://{{ hostvars[groups['master']][0].ansible_host }}:6443 K3S_TOKEN={{ hostvars[groups['master']][0].k3s_token.stdout }} sh -
+        curl -sfL https://get.k3s.io | K3S_VERSION={{ k3s_version }} K3S_URL=https://{{ hostvars['server'].ansible_default_ipv4.address }}:6443 K3S_TOKEN={{ k3s_token.stdout }} sh -
       args:
         creates: /usr/local/bin/k3s
 
-    - name: Restart K3s agent service on Worker Node
+    - name: Restart K3s agent service on Agent Node
       systemd:
         name: k3s-agent
         state: restarted
