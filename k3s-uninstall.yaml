@@ -1,0 +1,54 @@
+---
+- name: Uninstall K3s on all nodes
+  hosts: all
+  become: yes
+  tasks:
+    - name: Uninstall K3s on Control Plane Node
+      shell: |
+        if [ -f /usr/local/bin/k3s ]; then
+          echo "Uninstalling K3s from control plane node..."
+          sudo /usr/local/bin/k3s-uninstall.sh
+        else
+          echo "K3s not installed on this node."
+        fi
+      when: "'master' in group_names"
+      ignore_errors: yes
+
+    - name: Uninstall K3s Agent on Worker Nodes
+      shell: |
+        if [ -f /usr/local/bin/k3s-agent ]; then
+          echo "Uninstalling K3s agent from worker node..."
+          sudo /usr/local/bin/k3s-agent-uninstall.sh
+        else
+          echo "K3s agent not installed on this node."
+        fi
+      when: "'worker' in group_names"
+      ignore_errors: yes
+
+    - name: Clean up K3s configuration files on Control Plane Node
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/rancher/k3s
+        - /var/lib/rancher/k3s
+        - /etc/systemd/system/k3s*
+        - /usr/local/bin/k3s
+      when: "'master' in group_names"
+      ignore_errors: yes
+
+    - name: Clean up K3s configuration files on Worker Nodes
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /var/lib/rancher/k3s
+        - /etc/systemd/system/k3s-agent.service
+        - /usr/local/bin/k3s-agent
+      when: "'worker' in group_names"
+      ignore_errors: yes
+
+    - name: Reload systemd daemon to remove K3s service files
+      systemd:
+        daemon_reload: yes
+      ignore_errors: yes

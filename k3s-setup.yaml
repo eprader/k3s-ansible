@@ -1,0 +1,40 @@
+---
+- name: Setup Kubernetes (K3s) on Control Plane Node
+  hosts: master
+  become: yes
+  tasks:
+    - name: Install K3s on Control Plane Node
+      shell: |
+        curl -sfL https://get.k3s.io | K3S_VERSION={{ k3s_version }} sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Get the K3s token (to share with worker nodes)
+      command: cat /var/lib/rancher/k3s/server/node-token
+      register: k3s_token
+
+    - name: Copy Kubeconfig file to local machine (optional)
+      fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: ./kubeconfig
+        flat: yes
+
+    - name: Restart K3s service on Control Plane Node
+      systemd:
+        name: k3s
+        state: restarted
+
+- name: Setup Kubernetes (K3s) on Worker Nodes
+  hosts: worker
+  become: yes
+  tasks:
+    - name: Install K3s on Worker Node
+      shell: |
+        curl -sfL https://get.k3s.io | K3S_VERSION={{ k3s_version }} K3S_URL=https://{{ hostvars['master'][0].ansible_host }}:6443 K3S_TOKEN={{ hostvars['master'][0].k3s_token.stdout }} sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Restart K3s agent service on Worker Node
+      systemd:
+        name: k3s-agent
+        state: restarted
