@@ -1,5 +1,5 @@
 ---
-- name: Setup Kubernetes (K3s) on Control Plane Node
+- name: Setup K3s on Control Plane Node
   hosts: master
   become: yes
   tasks:
@@ -24,7 +24,7 @@
         name: k3s
         state: restarted
 
-- name: Setup Kubernetes (K3s) on Worker Nodes
+- name: Setup K3s on Worker Nodes
   hosts: worker
   become: yes
   tasks:
