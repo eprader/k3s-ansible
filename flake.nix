@@ -17,6 +17,7 @@
           buildInputs = with pkgs; [
             ansible
             kubectl
+            glibcLocales
           ];
 
           shellHook = ''
@@ -26,3 +27,4 @@
       };
     };
 }
+
